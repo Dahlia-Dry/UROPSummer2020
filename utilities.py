@@ -301,5 +301,4 @@ def fetchlmi(date, object, filetype):
                                         'object':object}) )
 
 
-fetchlmi('20191021b', '29P', 'Rb')
-fetchlmi('20191022a', '29P', 'Rb')
+#eg. fetchlmi('20191021b', '29P', 'Rb')

@@ -4,11 +4,9 @@ from astropy.io import fits
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-from astropy.visualization import (ZScaleInterval, LinearStretch,
-                                   ImageNormalize)
+from astropy.visualization import ZScaleInterval, LinearStretch,ImageNormalize
 import numpy as np
 import os
-
 
 def setup(date,number, centroid=True, make_output=False):
     data = readcsv('29p-data/'+date+'/Rb/'+date+'.Rb.'+number)
