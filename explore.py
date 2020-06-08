@@ -66,5 +66,5 @@ def mark_centroids():
     #print(targets)
     for date in targets:
         for number in targets[date]:
-            data, fits_file, centroid = setup(date,number,centroid=True,use_preset_path=True)
+            data, fits_file, centroid = setuplmi(date,number,centroid=True,use_preset_path=True)
             find_obj(data, fits_file, centroid=centroid)

@@ -571,6 +571,12 @@ class StarField(object):
 
 
 def satisfies_constraints(constraints):
+    try:
+        fd = open(creds.txt)
+    except FileNotFoundError:
+        print('Create file creds.txt in this directory with pipeline username on line 1 and password on line 2')
+    username = fd.readline().strip('\n')
+    password = fd.readline().strip('\n')
     """ Returns list of #### strings representing the file numbers that satisfy
     the given dict of constraints.
     ...
@@ -590,7 +596,7 @@ def satisfies_constraints(constraints):
     os.system('mkdir ' + rpath)
     ssh = SSHClient()
     ssh.load_system_host_keys()
-    ssh.connect('astrometry.mit.edu', username='urop1', password='DEAPS student1')
+    ssh.connect('astrometry.mit.edu', username=username, password=password)
     with SCPClient(ssh.get_transport(), sanitize=lambda x: x, progress=progress) as scp:
         scp.get('/ast2/data/' + constraints['telescope'] + '/' + constraints['date'][:4] + '/' + constraints['date'].split('/')[0] +
                 '/' + constraints['date'].split('/')[0] + '.R.*.gz')
@@ -630,11 +636,17 @@ def readnumbers():
     return numbers
 
 def fetch(telescope, date, type, numbers=None): #type is R, Rb, or log
+    try:
+        fd = open(creds.txt)
+    except FileNotFoundError:
+        print('Create file creds.txt in this directory with pipeline username on line 1 and password on line 2')
+    username = fd.readline().strip('\n')
+    password = fd.readline().strip('\n')
     def progress(filename, size, sent):
         sys.stdout.write("%s\'s progress: %.2f%%   \r" % (filename, float(sent) / float(size) * 100))
     ssh = SSHClient()
     ssh.load_system_host_keys()
-    ssh.connect('astrometry.mit.edu', username='urop1', password='DEAPS student1')
+    ssh.connect('astrometry.mit.edu', username=username, password=password)
     with SCPClient(ssh.get_transport(), sanitize=lambda x: x, progress=progress) as s:
         if type == 'R':
             if numbers is None:
