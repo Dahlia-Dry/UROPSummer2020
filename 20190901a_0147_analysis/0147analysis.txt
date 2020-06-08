@@ -1,0 +1,37 @@
+____________________________________________________________________
+STATISTICAL ANALYSIS OF 20190901a_0147
+telescope: DCT/LMI
+____________________________________________________________________
+RESIDUAL PLOTS
+Xi Residual Magnitudes:
+fig1	mean = 0.004559055118110236	 std = 0.0754371672157193
+r = -0.14466506947288013	 r^2 = 0.020927982325593234
+Eta Residual Magnitudes:
+fig2	mean = -0.00026771653543307015	 std = 0.034202143142984344
+r = -0.047634331596329495	 r^2 = 0.0022690295466290746
+____________________________________________________________________
+UNIVARIATE ANALYSIS
+Residual Magnitude:fig3	mean = 0.041926861701148226	 std = 0.07157896141123932
+Stellar Magnitude:fig4	mean = -11.623661417322836	 std = 1.9416549610381282
+FWHM:fig5	mean = 5.447401574803148	 std = 2.772684310836085
+____________________________________________________________________
+BIVARIATE ANALYSIS
+--Colormap overlay is a Gaussian Kernel Density Estimation--
+--KDEs are zoomed to middle 80% of data for visual clarity--
+--Raw scatterplots show totality of data--
+Residual Magnitude vs Stellar Magnitude:
+figs 6,7:
+r = 0.0779659704095635	 r^2 = 0.006078692541904932
+Residual Magnitude vs FWHM:
+figs 8,9:
+r = 0.03205060576750993	 r^2 = 0.001027241330064341
+Stellar Magnitude vs FWHM:
+figs 10,11:
+r = 0.2382894957419531	 r^2 = 0.056781883780954286
+Elongation vs Ellipticity:
+figs 12,13:
+r = 0.9983480338148211	 r^2 = 0.9966987966219191
+____________________________________________________________________
+MULTIVARIATE ANALYSIS
+3D Residual Quiver Plot: fig14
+3D Residual Surface Triangulation: fig15
