@@ -270,11 +270,36 @@ def readcsv(filepath, parse_nulls=True, fdp = False):
     else:
         return data,(fdp_data, fdp_chi2)
 
-
 #DEBUG READCSV#
 #data, fdp = readcsv('mitastrometry/SARAS/20160611/20160611.Rb.150',fdp=True)
 #data = pd.DataFrame(data)
 #print(data, fdp)
 
-#print(satisfies_constraints({'telescope': 'SARAS', 'date':'20190930', 'object':'Pluto'}))
-#fetch('SARAS', '20190930', 'Rb', numbers =satisfies_constraints({'telescope': 'SARAS', 'date':'20190930', 'object':'Pluto'}) )
+def fetchlmi(date, object, filetype):
+    """
+    wrapper function for fetch() and satisfies_constraints() on DCT/LMI data
+    scp's the data you want and deletes what you don't want.
+    works by taking all the R files from the date dir, unzipping them,
+    putting them in an R directory, and using the fits headers to delete
+    everything that doesn't satisfy object constraint.
+    Passes the numbers that satisfy object constraint to fetch(), which gets only
+    the Rb/log files you want and puts them in an Rb/log folder.
+    Run this function in the directory you want the R and Rb/log files of your
+    target object in.
+    It would be more efficient to use grep to find the files that satisfy
+    constraints, but for reasons I can't recall I used this method instead
+    ARGUMENTS
+    ---------
+    date (str) : Target date eg. '20190901a'
+    object (str): Target object eg. '29P'
+    filetype (str):'Rb' or 'log'
+    """
+    telescope = 'DCT/LMI'
+    fetch(telescope, date + '/linearFDP2x2_GDR2', filetype,
+        numbers = satisfies_constraints({'telescope': telescope,
+                                        'date':date,
+                                        'object':object}) )
+
+
+fetchlmi('20191021b', '29P', 'Rb')
+fetchlmi('20191022a', '29P', 'Rb')

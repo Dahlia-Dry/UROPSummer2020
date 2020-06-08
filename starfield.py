@@ -27,14 +27,16 @@ class StarField(object):
     -fits_file (str) = name of .R file, does not need .fits extension
     -create (bool) = True if you want to make a corresponding directory for the starfield
     """
-    def __init__(self, telescope, date, number, data, fits_file, create=True):
+    def __init__(self, telescope, date, number, data, fits_file, create=False):
         self.telescope = telescope
         self.date = date
         self.number = number
         self.data = data
         self.create= create
         self.fits_file = fits_file
-        self.directory = 'mitastrometry/' + str(self.telescope) + '/' + str(self.date) + '/' + str(self.date) + '_' + str(self.number) + "_analysis"
+        self.directory = str(self.date) + '_' + str(self.number) + "_analysis"
+        if not os.path.exists(self.directory):
+            os.system('mkdir ' + self.directory)
         """else:
             raise Exception('Directory for ' + self.date + '_' + self.number +
                             "already exists. If you wish to perform analysis again, delete existing directory.")"""
@@ -144,14 +146,15 @@ class StarField(object):
         print('r = ' + str(r) + '\t r^2 = ' + str(r2) + '\n')
         n = n+2
 
-        f.write('Residual Magnitude vs Subplot Mean Pixel Value:\n')
-        print('Residual Magnitude vs Subplot Mean Pixel Value:\n')
-        f.write('figs ' + str(n) + ',' + str(n+1) + ':\n')
-        print('figs ' + str(n) + ',' + str(n+1) + ':\n')
-        r, r2 = self.bivariate('mpv','resids', 'fig' + str(n), 'fig' + str(n+1))
-        f.write('r = ' + str(r) + '\t r^2 = ' + str(r2) + '\n')
-        print('r = ' + str(r) + '\t r^2 = ' + str(r2) + '\n')
-        n = n + 2
+        if mpv:
+            f.write('Residual Magnitude vs Subplot Mean Pixel Value:\n')
+            print('Residual Magnitude vs Subplot Mean Pixel Value:\n')
+            f.write('figs ' + str(n) + ',' + str(n+1) + ':\n')
+            print('figs ' + str(n) + ',' + str(n+1) + ':\n')
+            r, r2 = self.bivariate('mpv','resids', 'fig' + str(n), 'fig' + str(n+1))
+            f.write('r = ' + str(r) + '\t r^2 = ' + str(r2) + '\n')
+            print('r = ' + str(r) + '\t r^2 = ' + str(r2) + '\n')
+            n = n + 2
 
         f.write('Residual Magnitude vs FWHM:\n')
         print('Residual Magnitude vs FWHM:\n')
@@ -559,9 +562,3 @@ class StarField(object):
         plt.text(px, py, zscore, ha='center', va='center')
         plt.savefig(os.path.join(self.directory, str(star) + 'd.png'))
         plt.show()
-
-
-
-
-#starfield = StarField('20190823', '0357', data, fits_file)
-#starfield.write_outfile()
