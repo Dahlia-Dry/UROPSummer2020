@@ -572,7 +572,7 @@ class StarField(object):
 
 def satisfies_constraints(constraints):
     try:
-        fd = open(creds.txt)
+        fd = open('creds.txt')
     except FileNotFoundError:
         print('Create file creds.txt in this directory with pipeline username on line 1 and password on line 2')
     username = fd.readline().strip('\n')
@@ -904,9 +904,18 @@ def setuplmi(rpath, rbpath,
     else:
         return data, image_data
 
-def findstar(rpath,rbpath, destdir, save=True, size=100):
-    date = rpath.split('/')[-1].split('.')[0]
-    number = rpath.split('/')[-1].split('.')[2]
+def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
+            size=100, use_preset_path=False):
+    #use_preset_path allows entry of date, number instead of rpath, rbpath with
+    #the caveat that the file structure must be destdir/date/R/Rfiles for R and Rb
+    if not use_preset_path:
+        date = rpath.split('/')[-1].split('.')[0]
+        number = rpath.split('/')[-1].split('.')[2]
+    else:
+        date=rpath
+        number=rbpath
+        rpath = os.path.join(destdir,date+'/R/'+date+'.R.'+number)
+        rbpath = os.path.join(destdir,date+'/Rb/'+date+'.Rb.'+number)
     data = readcsv(rbpath)
     fits_file = rpath
     image_data = fits.getdata(fits_file)
@@ -938,7 +947,6 @@ def findstar(rpath,rbpath, destdir, save=True, size=100):
     centroid = [data['XIM'].iloc[closest], data['YIM'].iloc[closest]]
     distance=distances[closest]
     print('nearest star at:' + str(centroid))
-
     #show user how close their click is to selected star
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111)
@@ -946,13 +954,13 @@ def findstar(rpath,rbpath, destdir, save=True, size=100):
     ax2.imshow(image_data,cmap = 'viridis',norm=norm)
     ax2.plot([ix,centroid[0]],[iy,centroid[1]],c='r')
     if save:
-        if not os.path.exists(destdir+date):
-            os.system('mkdir ' +destdir+date)
-            os.system('mkdir ' +destdir+date + '/centroid-offsets')
-        elif not os.path.exists(destdir+date+'/centroid-offsets'):
-             os.system('mkdir ' +destdir+date + '/centroid-offsets')
-        plt.savefig(destdir+date+'/centroid-offsets/'+'offset='+
-                    str(int(distance))+ '_' + number+'.png')
+        if not os.path.exists(str(os.path.join(destdir,date))):
+            os.system('mkdir ' +str(os.path.join(destdir,date)))
+            os.system('mkdir ' +str(os.path.join(destdir,date + '/'+designation)))
+        elif not os.path.exists(str(os.path.join(destdir,date+'/'+designation))):
+             os.system('mkdir ' +str(os.path.join(destdir,date + '/'+designation)))
+        plt.savefig(str(os.path.join(destdir,date+'/'+designation+'/'+'offset='+
+                    str(int(distance))+ '_' + number+'.png')))
     #print Rb file entry for selected star, could change to write to file etc
     print(data.iloc[closest])
     plt.show()
