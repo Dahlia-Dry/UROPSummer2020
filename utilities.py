@@ -905,9 +905,14 @@ def setuplmi(rpath, rbpath,
         return data, image_data
 
 def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
-            size=100, use_preset_path=False):
+            size=100, use_preset_path=False,nstars = 3):
+    #nstars is number of times you want it to loop
     #use_preset_path allows entry of date, number instead of rpath, rbpath with
     #the caveat that the file structure must be destdir/date/R/Rfiles for R and Rb
+    def find_nearest(array, value):
+        idx = (np.abs(array-value)).argmin()
+        return idx
+
     if not use_preset_path:
         date = rpath.split('/')[-1].split('.')[0]
         number = rpath.split('/')[-1].split('.')[2]
@@ -919,15 +924,28 @@ def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
     data = readcsv(rbpath)
     fits_file = rpath
     image_data = fits.getdata(fits_file)
+    global count, indices
+    count, indices = [], []
     def onclick(event):
         global ix, iy
+        #global count
         ix, iy = event.xdata, event.ydata
         print('x = %d, y = %d'%(ix, iy))
-        fig.canvas.mpl_disconnect(cid)
-
-    def find_nearest(array, value):
-        idx = (np.abs(array-value)).argmin()
-        return idx
+        #Find closest entry in .Rb file to user click by
+        #looking for where distance is closest to 0
+        distances = np.sqrt((data['XIM'].values-ix)**2 +(data['YIM'].values-iy)**2)
+        closest = find_nearest(distances, 0)
+        indices.append(closest)
+        centroid = [data['XIM'].iloc[closest], data['YIM'].iloc[closest]]
+        distance=distances[closest]
+        print('nearest star at:' + str(centroid))
+        #plt.clf()
+        plt.plot([ix,centroid[0]],[iy,centroid[1]],c='r'); #inform matplotlib of the new data
+        plt.draw()
+        count.append(0)
+        if len(count) == nstars:
+            fig.canvas.mpl_disconnect(cid)
+            plt.close()
 
     #adjust image scale
     norm = ImageNormalize(image_data, interval=ZScaleInterval(),
@@ -940,30 +958,15 @@ def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
 
-    #Find closest entry in .Rb file to user click by
-    #looking for where distance is closest to 0
-    distances = np.sqrt((data['XIM'].values-ix)**2 +(data['YIM'].values-iy)**2)
-    closest = find_nearest(distances, 0)
-    centroid = [data['XIM'].iloc[closest], data['YIM'].iloc[closest]]
-    distance=distances[closest]
-    print('nearest star at:' + str(centroid))
-    #show user how close their click is to selected star
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
-    bounds = [int(iy-size),int(iy+size),int(ix-size),int(ix+size)]
-    ax2.imshow(image_data,cmap = 'viridis',norm=norm)
-    ax2.plot([ix,centroid[0]],[iy,centroid[1]],c='r')
     if save:
         if not os.path.exists(str(os.path.join(destdir,date))):
             os.system('mkdir ' +str(os.path.join(destdir,date)))
             os.system('mkdir ' +str(os.path.join(destdir,date + '/'+designation)))
         elif not os.path.exists(str(os.path.join(destdir,date+'/'+designation))):
              os.system('mkdir ' +str(os.path.join(destdir,date + '/'+designation)))
-        plt.savefig(str(os.path.join(destdir,date+'/'+designation+'/'+'offset='+
-                    str(int(distance))+ '_' + number+'.png')))
-    #print Rb file entry for selected star, could change to write to file etc
-    print(data.iloc[closest])
-    plt.show()
+        plt.savefig(str(os.path.join(destdir,date+'/'+designation+'/'+'offsets'
+                    + '_' + number+'.png')))
+    return indices
 
 
 #eg. fetchlmi('20191021b', '29P', 'Rb')

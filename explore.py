@@ -38,20 +38,20 @@ def mark_se_centroids(date):
     for number in numbers:
         findstar(date, number,destdir='29p-data/',designation='sextractor-offsets',
                 use_preset_path=True)
-
+#examples:
 #mark_se_centroids('20191022a')
 #_______________________________________________________________________________
-#WEEK 2:
+#WEEK 2: First attempt at fitting + plotting Gaussian PSF
 def subfield_select(image_data):
     def on_xlims_change(event_ax):
         global xlim
         xlim = event_ax.get_xlim()
-        print("updated xlims: ", event_ax.get_xlim())
+        #print("updated xlims: ", event_ax.get_xlim())
 
     def on_ylims_change(event_ax):
         global ylim
         ylim = event_ax.get_ylim()
-        print("updated ylims: ", event_ax.get_ylim())
+        #print("updated ylims: ", event_ax.get_ylim())
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -124,13 +124,13 @@ def surface_plot(date,number,destdir,designation='contour-plots',
                         '_' + number+'.png')))
     plt.show()
 
-def fit_2dgaussian(date,number,destdir,designation='gaussian-fits',save=True,
-                    use_centroid=False,plottype = '3d'):
-    def gaussian(coords,amplitude,xcentroid,ycentroid,sigma_x,sigma_y,offset):
-        xcentroid = float(xcentroid)
-        ycentroid = float(ycentroid)
-        return offset+amplitude*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma_x**(2)))+
-                                        ((coords[1]-ycentroid)**(2)/(2*sigma_y**(2)))))
+def gaussian(coords,amplitude,xcentroid,ycentroid,sigma_x,sigma_y,offset):
+    xcentroid = float(xcentroid)
+    ycentroid = float(ycentroid)
+    return offset+amplitude*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma_x**(2)))+
+                                    ((coords[1]-ycentroid)**(2)/(2*sigma_y**(2)))))
+
+def fit_gaussian_v1(date,number,destdir,plottype=None,save=True,use_centroid=False):
     rpath = os.path.join(destdir,date+'/R/'+date+'.R.'+number)
     rbpath = os.path.join(destdir,date+'/Rb/'+date+'.Rb.'+number)
     data = readcsv(rbpath)
@@ -159,13 +159,29 @@ def fit_2dgaussian(date,number,destdir,designation='gaussian-fits',save=True,
     z = image_data
     #print(x.shape,y.shape, image_data.shape)
     #z = rebin(image_data, (bny,bnx))
+    #axes.plot_wireframe(x,y,z)
+    #plt.show()
     xflat = x.flatten()
     yflat = y.flatten()
     zflat = z.flatten()
-    #axes.plot_wireframe(x,y,z)
-    #plt.show()
     popt, pcov = curve_fit(gaussian, (xflat,yflat),zflat)
     print(popt)
+    data = [x,y,z]
+    fit = [popt, pcov]
+    if plottype is not None:
+        plot_v1fit(plottype,data,fit,date,number,destdir,save=save)
+    return data, fit
+
+def plot_v1fit(plottype,data,fit,date,number,destdir,
+                designation='gaussian-fits-v1',save=True):
+    x = data[0]
+    y = data[1]
+    z = data[2]
+    popt = fit[0]
+    pcov = fit[1]
+    xflat = x.flatten()
+    yflat = y.flatten()
+    zflat = z.flatten()
     if plottype is '3dmesh':
         fig, axes = plt.subplots(nrows=1, ncols=1, subplot_kw={'projection': '3d'})
         axes.set_title('2D Gaussian PSF: ' +
@@ -234,9 +250,12 @@ def fit_2dgaussian(date,number,destdir,designation='gaussian-fits',save=True,
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(0.05, 0.05, params, transform=ax.transAxes, fontsize=8,
                     verticalalignment='bottom', bbox=props)
-        resids = zflat - gaussian((xflat,yflat),*popt)
+        resids = z - np.reshape(gaussian((xflat,yflat),*popt),(x.shape))
         print(np.arange(len(resids)).shape,resids.shape)
-        plt.scatter(np.arange(len(resids)),resids)
+        plt.imshow(resids)
+    else:
+        raise Exception("Please Specify plot type: 3dmesh, 3dcontour,\
+                        2d, resid")
 
     if save:
         if not os.path.exists(str(os.path.join(destdir,date))):
@@ -249,4 +268,17 @@ def fit_2dgaussian(date,number,destdir,designation='gaussian-fits',save=True,
     plt.show()
 
 #surface_plot('20190901a','0147',destdir='29p-data/',save=False)
-fit_2dgaussian('20190907a','0142',destdir='29p-data/',plottype = 'resid')
+#data, fit = fit_gaussian_v1('20190901a','0147',destdir='29p-data/',plottype='resid')
+#___________________________________________________________________________________
+#WEEK 3:
+def fit_gaussian_v2(date,number,destdir,plottype=None,save=True,use_centroid=False):
+    rpath = os.path.join(destdir,date+'/R/'+date+'.R.'+number)
+    rbpath = os.path.join(destdir,date+'/Rb/'+date+'.Rb.'+number)
+    data = readcsv(rbpath)
+    fits_file = rpath
+    image_data = fits.getdata(fits_file)
+    image_data,Xlim,Ylim = subfield_select(image_data)
+    norm = ImageNormalize(image_data, interval=ZScaleInterval(),
+                      stretch=LinearStretch())
+    maxindex = np.unravel_index(image_data.argmax(),image_data.shape)
+    
