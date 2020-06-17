@@ -905,7 +905,7 @@ def setuplmi(rpath, rbpath,
         return data, image_data
 
 def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
-            size=100, use_preset_path=False,nstars = 3):
+            size=100, subfield = None, lims = None, use_preset_path=False,nstars = 3):
     #nstars is number of times you want it to loop
     #use_preset_path allows entry of date, number instead of rpath, rbpath with
     #the caveat that the file structure must be destdir/date/R/Rfiles for R and Rb
@@ -923,7 +923,12 @@ def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
         rbpath = os.path.join(destdir,date+'/Rb/'+date+'.Rb.'+number)
     data = readcsv(rbpath)
     fits_file = rpath
-    image_data = fits.getdata(fits_file)
+    if subfield is None:
+        image_data = fits.getdata(fits_file)
+    else:
+        image_data = subfield
+        data['XIM'] = data['XIM']-lims[0][0]
+        data['YIM'] = data['YIM']-lims[1][1]
     global count, indices
     count, indices = [], []
     def onclick(event):
@@ -954,7 +959,8 @@ def findstar(rpath,rbpath, destdir, designation='centroid-offsets',save=True,
     #Allow user to pick the centroid of their object
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.imshow(image_data, cmap = 'viridis',norm=norm)
+    ax.imshow(image_data, vmin = image_data.mean(),
+               vmax = 2*image_data.mean(),cmap='viridis')
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
 
