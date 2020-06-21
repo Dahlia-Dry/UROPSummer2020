@@ -342,8 +342,8 @@ def plot_v1fit(plottype,data,fit,date,number,destdir,
 #data, fit = fit_gaussian_v1('20190901a','0147',destdir='29p-data/',plottype='all')
 #___________________________________________________________________________________
 #WEEK 3:
-def fit_gaussian_v2(date,number,destdir,starap = 15, objap = 20,
-                    plottype=None,save=True,use_centroid=False):
+def fit_gaussian_v2(date,number,destdir,starap = 15, objap = 10,
+                    plottype=None,save=True,use_centroid=False,v=0.3):
     rpath = os.path.join(destdir,date+'/R/'+date+'.R.'+number)
     rbpath = os.path.join(destdir,date+'/Rb/'+date+'.Rb.'+number)
     data = readcsv(rbpath)
@@ -365,7 +365,7 @@ def fit_gaussian_v2(date,number,destdir,starap = 15, objap = 20,
     obj_data,objX, objY = subfield_select(image_data)
     fig = plt.figure()
     #Subplot 1 of 4: show apertures of fit windows
-    ax = fig.add_subplot(2,2,1)
+    ax = fig.add_subplot(111)
     ax.imshow(image_data, vmin = image_data.mean(),
                vmax = 2*image_data.mean(),cmap='viridis')
     slx,sly,subfields = [], [], []
@@ -382,18 +382,27 @@ def fit_gaussian_v2(date,number,destdir,starap = 15, objap = 20,
         ax.add_patch(rect)
     #print(np.amax(obj_data),np.amax(image_data))
     objcoords = list(zip(*np.where(image_data == np.amax(obj_data))))
-    objcoords = (objcoords[0][1]-objap/2,
-                objcoords[0][0]-objap/2)
+    expobjcoords = (objcoords[0][1]-starap/2,objcoords[0][0]-starap/2)
+    objcoords = (objcoords[0][1]-objap/2,objcoords[0][0]-objap/2)
     obx = [objcoords[0]-objap/2,objcoords[0]+objap/2]
     oby = [objcoords[1]+objap/2,objcoords[1]-objap/2]
     objfield = image_data[int(objcoords[1]):int(objcoords[1]+objap),
                                 int(objcoords[0]):int(objcoords[0]+objap)]
-    print(objfield.size)
+    expobjfield= image_data[int(expobjcoords[1]):int(expobjcoords[1]+starap),
+                                int(expobjcoords[0]):int(expobjcoords[0]+starap)]
+    figalt = plt.figure()
+    a2= figalt.add_subplot(121)
+    a2.imshow(objfield)
+    a2= figalt.add_subplot(122)
+    a2.imshow(expobjfield)
+    print(list(zip(*np.where(objfield == np.amax(objfield)))))
+    print(list(zip(*np.where(expobjfield == np.amax(expobjfield)))))
+    plt.show()
     rect = patches.Rectangle(objcoords, objap, objap, edgecolor = 'black',fill=False)
     ax.add_patch(rect)
     ax.set_title('Fit Windows')
-    ax = fig.add_subplot(2,2,2)
-    ax.imshow(objfield)
+    #ax = fig.add_subplot(2,2,2)
+    #ax.imshow(objfield)
     #get calibration sigmas
     data, fit = [],[]
     fig2 = plt.figure()
@@ -431,7 +440,135 @@ def fit_gaussian_v2(date,number,destdir,starap = 15, objap = 20,
             contour.set_ylabel('Contours')
     plt.show()
     sigmas = [fit[i][0][4] for i in range(len(subfields))]
-    sigma_guess= sum(sigmas)/len(sigmas)
-    beta_guess = np.median(objfield)
+    sigma_guess= sum(np.abs(sigmas))/len(sigmas)
+    beta_guess = np.median(image_data)
+    print('beta ',beta_guess)
+    x0_guess = objcoords[0]+objap/2
+    y0_guess = objcoords[1]+objap/2
+    #alpha_guess = np.amax(objfield)-beta_guess
+    #setup for fit
+    bnx, bny = objap, objap
+    x,y = np.linspace(1,bnx,bnx), np.linspace(1,bny,bny)
+    x, y = np.meshgrid(x,y)
+    z = objfield
+    xflat = x.flatten()
+    yflat = y.flatten()
+    zflat = z.flatten()
+    print(xflat.shape,yflat.shape,zflat.shape)
+    # fit sigma,alpha
+    def gaussian2(coords,sigma,alpha):
+        xcentroid = x0_guess
+        ycentroid = y0_guess
+        return beta_guess+alpha*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma**(2)))+
+                                        ((coords[1]-ycentroid)**(2)/(2*sigma**(2)))))
+    popt, pcov = curve_fit(gaussian2, (xflat,yflat),zflat)
+    print('step2:',popt)
+    sigma_guess = popt[0]
+    alpha_guess = popt[1]
+    #Next: fit x0,y0
+    def gaussian3(coords,xcentroid,ycentroid):
+        return beta_guess+alpha_guess*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma_guess**(2)))+
+                                        ((coords[1]-ycentroid)**(2)/(2*sigma_guess**(2)))))
+    popt, pcov = curve_fit(gaussian3, (xflat,yflat),zflat)
+    print('step3:',popt)
+    x0_guess = popt[0]
+    y0_guess = popt[1]
+    def gaussian2(coords,sigma,alpha):
+        xcentroid = x0_guess
+        ycentroid = y0_guess
+        return beta_guess+alpha*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma**(2)))+
+                                        ((coords[1]-ycentroid)**(2)/(2*sigma**(2)))))
+    popt, pcov = curve_fit(gaussian2, (xflat,yflat),zflat)
+    print('step2:',popt)
+    sigma_guess = popt[0]
+    alpha_guess = popt[1]
+    #Next: fit all with bounds
+    def gaussian5(coords,xcentroid,ycentroid,alpha,sigma):
+        xcentroid = float(xcentroid)
+        ycentroid = float(ycentroid)
+        return beta_guess+alpha*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma**(2)))+
+                                        ((coords[1]-ycentroid)**(2)/(2*sigma**(2)))))
+    popt, pcov = curve_fit(gaussian5, (xflat,yflat),zflat,
+                            bounds=([x0_guess-np.abs(v*x0_guess),y0_guess-np.abs(v*y0_guess),
+                                     alpha_guess-np.abs(v*alpha_guess),sigma_guess-np.abs(v*sigma_guess)],
+                                     [x0_guess+np.abs(v*x0_guess),y0_guess+np.abs(v*y0_guess),
+                                     alpha_guess+np.abs(v*alpha_guess),sigma_guess+np.abs(v*sigma_guess)]))
+    print('step5:',popt)
+    #x0_guess = popt[0] + (starap-objap)/2
+    #y0_guess = popt[1] + (starap-objap)/2
+    y0_guess = list(zip(*np.where(expobjfield == np.amax(expobjfield))))[0][1]
+    x0_guess = list(zip(*np.where(expobjfield == np.amax(expobjfield))))[0][0]
+    plt.imshow(expobjfield)
+    print(x0_guess,y0_guess)
+    plt.scatter(x0_guess,y0_guess)
+    plt.show()
+    alpha_guess = popt[2]
+    sigma_guess = popt[3]
+    popt_final = [popt[2],popt[0],popt[1],popt[3],popt[3]]
+    #now expand field and go back to fit beta
+    #objfield = expobjfield
+    bnx, bny = starap, starap
+    x,y = np.linspace(1,bnx,bnx), np.linspace(1,bny,bny)
+    x, y = np.meshgrid(x,y)
+    z = expobjfield
+    xflat = x.flatten()
+    yflat = y.flatten()
+    zflat = z.flatten()
+    print([x0_guess-np.abs(v*x0_guess),y0_guess-np.abs(v*y0_guess),
+             beta_guess-np.abs(v*beta_guess)],
+             [x0_guess+np.abs(v*x0_guess),y0_guess+np.abs(v*y0_guess),
+             beta_guess+np.abs(v*beta_guess)])
+    def gaussianbeta(coords,beta):
+        return beta+alpha_guess*np.exp(-(((coords[0]-x0_guess)**(2)/(2*sigma_guess**(2)))+
+                                        ((coords[1]-y0_guess)**(2)/(2*sigma_guess**(2)))))
+    popt, pcov = curve_fit(gaussianbeta, (xflat,yflat),zflat)
+    popt_final[1] = x0_guess
+    popt_final[2] = y0_guess
+    popt_final.append(popt[0])
+    beta_guess = popt[0]
+    """def gaussianfinal(coords,xcentroid,ycentroid,
+                        bounds=([x0_guess-np.abs(v*x0_guess),y0_guess-np.abs(v*y0_guess)],
+                                [x0_guess+np.abs(v*x0_guess),y0_guess+np.abs(v*y0_guess)])):
+        return beta_guess+alpha_guess*np.exp(-(((coords[0]-xcentroid)**(2)/(2*sigma_guess**(2)))+
+                                        ((coords[1]-ycentroid)**(2)/(2*sigma_guess**(2)))))
+    popt, pcov = curve_fit(gaussianfinal, (xflat,yflat),zflat)
+    popt_final[1] = np.abs(popt[0])
+    popt_final[2] = np.abs(popt[1])"""
+    popt = popt_final
+    print('final:',popt)
+    data = [x,y,z]
+    fit = [popt, pcov]
+    if plottype is not None:
+        if plottype is not 'all':
+            plot_v1fit(plottype,data,fit,date,number,destdir,save=save)
+        else:
+            fig = plt.figure()
+            fig.suptitle('Gaussian PSF fit for '+date+'-'+number+':'+
+            r'$G(x,y) = \beta + \alpha*e^{-(\frac{(x-x_0)^2}{2*\sigma_x}+\frac{(y-y_0)^2}{2*\sigma_y})}$')
+            ax = fig.add_subplot(221)
+            ax.set_title('Object')
+            ax.axes.xaxis.set_visible(False)
+            ax.axes.yaxis.set_ticks([])
+            ax.imshow(expobjfield,cmap='viridis')
+            ax.contour(x,y,z, cmap=cm.Blues)
+            ax = fig.add_subplot(222,projection='3d')
+            ax.set_title('Model Fit')
+            plot_v1fit('3dmesh',data,fit,date,number,destdir,designation='gaussian-fits-v1',
+                        figax = [fig,ax],showparams=False,save=save)
+            ax = fig.add_subplot(223)
+            ax.axes.xaxis.set_visible(False)
+            ax.axes.yaxis.set_ticks([])
+            ax.set_title('Observed vs Model Contour')
+            plot_v1fit('2d',data,fit,date,number,destdir,designation='gaussian-fits-v1',
+                        figax = [fig,ax],smalltext=True,showparams=True,save=save)
+            ax = fig.add_subplot(224)
+            ax.axes.xaxis.set_ticks([])
+            ax.axes.yaxis.set_ticks([])
+            ax.set_title('Residuals')
+            plot_v1fit('resid',data,fit,date,number,destdir,designation='gaussian-fits-v1',
+                        figax = [fig,ax],showparams=False,save=save)
+            plt.show()
+    return data, fit
 
-fit_gaussian_v2('20190901a','0147',destdir='29p-data/')
+
+fit_gaussian_v2('20190901a','0147',destdir='29p-data/',plottype='all')
